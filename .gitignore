@@ -1,0 +1,23 @@
+# Segredos — NUNCA versionar
+*.keystore
+*.jks
+android/key.properties
+android/local.properties
+.env
+
+# Traduções com direitos autorais: ficam só no seu computador.
+# (a demo.json continua no repositório para o app abrir com algo)
+assets/bibles/*.json
+!assets/bibles/demo.json
+
+# Flutter / Dart
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# IDE
+.idea/
+*.iml
+.vscode/

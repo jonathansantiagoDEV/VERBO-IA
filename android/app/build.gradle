@@ -1,0 +1,46 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace "io.verboia.app"
+    compileSdk flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        // Package name definido na Fase 1 — não mude depois de publicar na Play Store
+        applicationId "io.verboia.app"
+        minSdk 23
+        targetSdk flutter.targetSdkVersion
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+    }
+
+    signingConfigs {
+        release {
+            // TODO: preencher com o keystore de release (verbo-ia-release.keystore)
+            // via android/key.properties (não versionar esse arquivo no Git!)
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug // troque para signingConfigs.release ao publicar
+        }
+    }
+}
+
+flutter {
+    source "../.."
+}
