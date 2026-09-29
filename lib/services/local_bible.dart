@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import '../data/bible_catalog.dart';
 import '../data/bible_translations.dart';
+import 'local_store.dart';
+import 'text_utils.dart';
 
 class SearchHit {
   final BookInfo book;
@@ -59,6 +61,22 @@ class LocalBible {
     return _cache[translationId] = books;
   }
 
+  /// Tradução escolhida pelo usuário (ou a primeira disponível).
+  static Future<TranslationInfo?> currentTranslation() async {
+    final list = await availableTranslations();
+    if (list.isEmpty) return null;
+    final saved = await LocalStore.translationId();
+    return list.firstWhere((t) => t.id == saved, orElse: () => list.first);
+  }
+
+  /// Texto de um único versículo (null se não existir na tradução).
+  static Future<String?> verseText(
+      String translationId, String bookId, int chapter, int verse) async {
+    final list = await verses(translationId, bookId, chapter);
+    if (verse < 1 || verse > list.length) return null;
+    return list[verse - 1];
+  }
+
   /// Versículos do capítulo (lista vazia se a tradução não tem o capítulo).
   static Future<List<String>> verses(
       String translationId, String bookId, int chapter) async {
@@ -68,16 +86,7 @@ class LocalBible {
     return books[i][chapter - 1];
   }
 
-  static String _norm(String s) {
-    const from = 'áàâãäéèêëíìîïóòôõöúùûüçñ';
-    const to = 'aaaaaeeeeiiiiooooouuuucn';
-    final b = StringBuffer();
-    for (final ch in s.toLowerCase().split('')) {
-      final k = from.indexOf(ch);
-      b.write(k >= 0 ? to[k] : ch);
-    }
-    return b.toString();
-  }
+  static String _norm(String s) => normalizeText(s);
 
   /// Busca por palavras (todas precisam aparecer), sem diferenciar acentos.
   static Future<List<SearchHit>> search(String translationId, String query,

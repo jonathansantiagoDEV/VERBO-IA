@@ -30,3 +30,20 @@ Livros e traduções agora vivem dentro do app. O Supabase virou opcional (só l
 ## Baixar traduções
 `python tools/baixar_biblias.py` baixa ACF, AA, NVI e KJV para assets/bibles/ (precisa de internet).
 Depois: `flutter pub get` e `flutter run`. Para outras traduções (ARA, NAA...), coloque seu arquivo em assets/bibles/<id>.json.
+
+## Favoritos e notas (tela única)
+- Aba Estudos → "Favoritos e notas": duas abas (Favoritos / Notas), ordenadas pela ordem da Bíblia, com o texto na tradução escolhida.
+- Favoritos: deslizar para remover (com "Desfazer"), menu com Copiar, Compartilhar e Remover.
+- Notas: agrupadas por versículo, com editar e apagar (apagar pede confirmação).
+- Tocar em um item abre o capítulo já rolado e com o versículo destacado (também vale para resultados da busca).
+- No leitor, segurar um versículo agora tem Copiar e Compartilhar. Formato: “texto” — Livro cap:vers (TRAD).
+- Novo pacote: share_plus. Rode `flutter pub get`.
+
+## Referência direta e comparação de traduções
+- Na busca, digitar "Jo 3:16", "Sl 23", "1 Co 13.4-7", "Jd 3" mostra o atalho "Abrir ..." e abre direto no versículo (faixas como 4-7 ficam destacadas). Só o nome do livro abre a lista de capítulos.
+- No leitor, segurar um versículo → "Comparar traduções" mostra o versículo em todas as traduções instaladas.
+
+## Plano de leitura (offline)
+- Planos: Bíblia em um ano, Novo Testamento em 90 dias, Salmos e Provérbios em 30 dias.
+- Tela com progresso, leitura de hoje com caixinhas, dias atrasados e dias seguidos. Atalho na Início e em Estudos.
+- No leitor, quando o capítulo faz parte do plano ativo, aparece o botão de "marcar como lido" na barra superior.

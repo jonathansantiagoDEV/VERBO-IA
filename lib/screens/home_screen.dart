@@ -4,6 +4,8 @@ import '../services/reading_progress.dart';
 import 'bible_books_screen.dart';
 import 'bible_reader_screen.dart';
 import 'search_screen.dart';
+import 'studies_tab.dart';
+import '../widgets/plan_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,7 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _HomeTab(),
     BibleBooksScreen(),
     _PlaceholderTab(title: 'IA', icon: Icons.auto_awesome),
-    _PlaceholderTab(title: 'Estudos', icon: Icons.school_outlined),
+    StudiesTab(),
     _PlaceholderTab(title: 'Perfil', icon: Icons.person_outline),
   ];
 
@@ -71,6 +73,8 @@ class _HomeTab extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         const _ContinueReadingCard(),
+        const SizedBox(height: 12),
+        const PlanCard(),
         const SizedBox(height: 12),
         _SectionCard(
           title: 'Devocional do dia',
