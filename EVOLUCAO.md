@@ -47,3 +47,20 @@ Depois: `flutter pub get` e `flutter run`. Para outras traduções (ARA, NAA...)
 - Planos: Bíblia em um ano, Novo Testamento em 90 dias, Salmos e Provérbios em 30 dias.
 - Tela com progresso, leitura de hoje com caixinhas, dias atrasados e dias seguidos. Atalho na Início e em Estudos.
 - No leitor, quando o capítulo faz parte do plano ativo, aparece o botão de "marcar como lido" na barra superior.
+
+## Strong (original hebraico, aramaico e grego)
+- Traduções com Strong têm o texto no formato `palavra<H1121>` (igual ao MySword). As palavras marcadas ficam coloridas e tocáveis; o número não aparece no texto.
+- Tocar numa palavra abre o verbete: alfabeto original (hebraico/aramaico da direita para a esquerda), transliteração, pronúncia, significado, origem, como a KJV traduz e "Ver ocorrências" (todos os versículos com aquele número na tradução aberta).
+- Cor do destaque e liga/desliga: no leitor, botão "Aa" (8 cores prontas + cor personalizada RGB). A escolha fica salva.
+- Busca, copiar, compartilhar, comparar e favoritos usam o texto sem as marcações.
+- IDs reconhecidos: `kjvs`, `acfs`, `aras` e `demos` (amostra de João 1:1-5, já incluída).
+- Dados: `python tools/montar_strong.py dicionario [--pt significados_pt.json]` e `python tools/montar_strong.py biblia ORIGEM.json ID`. Detalhes no topo do script.
+- assets/strongs/ traz só uma amostra pequena; o comando `dicionario` a substitui pelo dicionário completo.
+- Aramaico: o app reconhece pelas palavras marcadas como "Chaldee" no dicionário de Strong.
+
+## Me explicar (IA)
+- No leitor: segurar um versículo -> "Me explicar". Mostra contexto, sentido das palavras (usa os números Strong quando a tradução tem), visões diferentes entre tradições e uma aplicação curta. Pode copiar e gerar de novo.
+- Respostas ficam guardadas no aparelho (até 200), então repetir o mesmo versículo não gasta de novo.
+- A chave da IA fica no servidor (pasta `server/`, função para a Vercel). Passos em `server/README.md`.
+- Rodar o app: `flutter run -d chrome --dart-define=VERBO_API_URL=https://SEU-PROJETO.vercel.app --dart-define=VERBO_APP_KEY=senha`. Sem `VERBO_API_URL`, o botão avisa que falta configurar.
+- Novo pacote: http. Rode `flutter pub get`.

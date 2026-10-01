@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../services/reading_progress.dart';
 import '../data/bible_catalog.dart';
@@ -6,6 +7,10 @@ import '../data/bible_translations.dart';
 import '../services/local_bible.dart';
 import '../services/local_store.dart';
 import '../services/verse_share.dart';
+import '../services/strong_settings.dart';
+import '../services/strong_text.dart';
+import '../widgets/explain_sheet.dart';
+import '../widgets/strong_sheet.dart';
 import '../data/reading_plans.dart';
 import '../services/reading_plan_store.dart';
 import '../widgets/compare_verse_sheet.dart';
@@ -46,6 +51,21 @@ class _BibleReaderScreenState extends State<BibleReaderScreen> {
   String? _error;
   int? _highlight;
   int? _highlightEnd;
+  List<String> _raw = [];
+  bool _strongOn = true;
+  Color _strongColor = StrongSettings.defaultColor;
+  final List<TapGestureRecognizer> _recognizers = [];
+  Map<int, List<InlineSpan>> _spans = {};
+  static const _palette = [
+    Color(0xFF1E88E5),
+    Color(0xFF00897B),
+    Color(0xFF43A047),
+    Color(0xFFFB8C00),
+    Color(0xFFE53935),
+    Color(0xFF8E24AA),
+    Color(0xFFD81B60),
+    Color(0xFF6D4C41),
+  ];
   String? _planId;
   bool _inPlan = false;
   bool _chapterRead = false;
@@ -55,6 +75,9 @@ class _BibleReaderScreenState extends State<BibleReaderScreen> {
   @override
   void dispose() {
     _highlightTimer?.cancel();
+    for (final r in _recognizers) {
+      r.dispose();
+    }
     super.dispose();
   }
 
@@ -63,6 +86,14 @@ class _BibleReaderScreenState extends State<BibleReaderScreen> {
     super.initState();
     _highlight = widget.initialVerse;
     _highlightEnd = widget.initialVerseEnd;
+    StrongSettings.load().then((st) {
+      if (!mounted) return;
+      setState(() {
+        _strongOn = st.enabled;
+        _strongColor = st.color;
+        _rebuildSpans();
+      });
+    });
     ReadingProgress.loadFontSize().then((v) {
       if (mounted) setState(() => _fontSize = v);
     });
@@ -88,6 +119,8 @@ class _BibleReaderScreenState extends State<BibleReaderScreen> {
       }
       final verses = await LocalBible.verses(
           _translation!.id, widget.bookId, _chapterNumber);
+      final raw = await LocalBible.versesRaw(
+          _translation!.id, widget.bookId, _chapterNumber);
       final marks = await LocalStore.bookmarks();
       final notes = await LocalStore.notes();
       final planId = await ReadingPlanStore.activePlanId();
@@ -105,6 +138,8 @@ class _BibleReaderScreenState extends State<BibleReaderScreen> {
       if (!mounted) return;
       setState(() {
         _verses = verses;
+        _raw = raw;
+        _rebuildSpans();
         _bookmarked = marks;
         _noted = notes.keys.toSet();
         _planId = planId;
@@ -220,15 +255,136 @@ class _BibleReaderScreenState extends State<BibleReaderScreen> {
     );
   }
 
+  /// Monta as palavras com Strong (coloridas e tocáveis) de cada versículo.
+  void _rebuildSpans() {
+    for (final r in _recognizers) {
+      r.dispose();
+    }
+    _recognizers.clear();
+    _spans = {};
+    if (!_strongOn || _translation?.strong != true) return;
+    for (var i = 0; i < _raw.length; i++) {
+      final spans = <InlineSpan>[];
+      for (final t in StrongText.parse(_raw[i])) {
+        if (t.ids.isEmpty) {
+          spans.add(TextSpan(text: t.text));
+          continue;
+        }
+        final rec = TapGestureRecognizer()
+          ..onTap = () => _showStrong(t.text, t.ids);
+        _recognizers.add(rec);
+        spans.add(TextSpan(
+          text: t.text,
+          recognizer: rec,
+          style: TextStyle(
+            color: _strongColor,
+            decoration: TextDecoration.underline,
+            decorationStyle: TextDecorationStyle.dotted,
+            decorationColor: _strongColor.withOpacity(0.6),
+          ),
+        ));
+      }
+      _spans[i + 1] = spans;
+    }
+  }
+
+  void _showExplain(int verse) {
+    final strongs = <String>[];
+    if (_translation?.strong == true && verse - 1 < _raw.length) {
+      for (final t in StrongText.parse(_raw[verse - 1])) {
+        if (t.ids.isNotEmpty) strongs.add('${t.text.trim()}=${t.ids.join('+')}');
+      }
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => ExplainSheet(
+        reference: '${widget.bookName} $_chapterNumber:$verse',
+        text: _verses[verse - 1],
+        translation: _translation?.shortName ?? '',
+        strongs: strongs,
+      ),
+    );
+  }
+
+  void _showStrong(String word, List<String> ids) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => StrongSheet(
+          word: word, ids: ids, translationId: _translation!.id),
+    );
+  }
+
+  Future<void> _setStrong({bool? enabled, Color? color}) async {
+    setState(() {
+      _strongOn = enabled ?? _strongOn;
+      _strongColor = color ?? _strongColor;
+      _rebuildSpans();
+    });
+    await StrongSettings.save(enabled: _strongOn, color: _strongColor);
+  }
+
+  Future<Color?> _pickCustomColor() {
+    var r = (_strongColor.value >> 16) & 0xFF;
+    var g = (_strongColor.value >> 8) & 0xFF;
+    var b = _strongColor.value & 0xFF;
+    return showDialog<Color>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          title: const Text('Cor personalizada'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Color.fromARGB(255, r, g, b),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              for (final ch in [0, 1, 2])
+                Slider(
+                  min: 0,
+                  max: 255,
+                  value: [r, g, b][ch].toDouble(),
+                  label: ['Vermelho', 'Verde', 'Azul'][ch],
+                  onChanged: (v) => setDlg(() {
+                    if (ch == 0) r = v.round();
+                    if (ch == 1) g = v.round();
+                    if (ch == 2) b = v.round();
+                  }),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar')),
+            FilledButton(
+                onPressed: () =>
+                    Navigator.pop(ctx, Color.fromARGB(255, r, g, b)),
+                child: const Text('Usar')),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showFontSheet() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Tamanho da letra'),
                 Slider(
@@ -242,6 +398,55 @@ class _BibleReaderScreenState extends State<BibleReaderScreen> {
                     setState(() => _fontSize = v);
                   },
                   onChangeEnd: ReadingProgress.saveFontSize,
+                ),
+                const Divider(),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Destacar palavras com Strong'),
+                  subtitle: Text(_translation?.strong == true
+                      ? 'Toque numa palavra colorida para ver o original e o significado.'
+                      : 'Escolha uma tradução com Strong (ex.: KJV+S) para usar.'),
+                  value: _strongOn,
+                  onChanged: (v) {
+                    setSheet(() {});
+                    _setStrong(enabled: v);
+                  },
+                ),
+                const SizedBox(height: 8),
+                const Text('Cor do destaque'),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final c in _palette)
+                      GestureDetector(
+                        onTap: () {
+                          setSheet(() {});
+                          _setStrong(color: c);
+                        },
+                        child: CircleAvatar(
+                          radius: 17,
+                          backgroundColor: c,
+                          child: _strongColor.value == c.value
+                              ? const Icon(Icons.check,
+                                  size: 18, color: Colors.white)
+                              : null,
+                        ),
+                      ),
+                    GestureDetector(
+                      onTap: () async {
+                        final c = await _pickCustomColor();
+                        if (c == null) return;
+                        setSheet(() {});
+                        _setStrong(color: c);
+                      },
+                      child: const CircleAvatar(
+                        radius: 17,
+                        child: Icon(Icons.palette_outlined, size: 18),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -314,11 +519,13 @@ class _BibleReaderScreenState extends State<BibleReaderScreen> {
                   _showCompare(verse);
                 },
               ),
-              const ListTile(
-                leading: Icon(Icons.auto_awesome),
-                title: Text('Me explicar'),
-                subtitle: Text('Disponível a partir da Fase 2 (IA)'),
-                enabled: false,
+              ListTile(
+                leading: const Icon(Icons.auto_awesome),
+                title: const Text('Me explicar'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showExplain(verse);
+                },
               ),
               const ListTile(
                 leading: Icon(Icons.link),
@@ -471,6 +678,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen> {
     final marked = _bookmarked.contains(_key(number));
     final noted = _noted.contains(_key(number));
     final hl = _highlight;
+    final strongSpans = _spans[number];
     final highlighted =
         hl != null && number >= hl && number <= (_highlightEnd ?? hl);
     return InkWell(
@@ -499,7 +707,7 @@ class _BibleReaderScreenState extends State<BibleReaderScreen> {
                 style: const TextStyle(
                     fontWeight: FontWeight.bold, color: Colors.grey),
               ),
-              TextSpan(text: text),
+              if (strongSpans != null) ...strongSpans else TextSpan(text: text),
               if (noted)
                 WidgetSpan(
                   alignment: PlaceholderAlignment.middle,

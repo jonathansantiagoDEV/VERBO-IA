@@ -7,8 +7,14 @@ class TranslationInfo {
   final String shortName;
   final String language;
   final bool publicDomain;
+
+  /// Texto com números Strong (`palavra<H1121>`): as palavras marcadas
+  /// abrem o dicionário com o original hebraico, aramaico ou grego.
+  final bool strong;
+
   const TranslationInfo(
-      this.id, this.name, this.shortName, this.language, this.publicDomain);
+      this.id, this.name, this.shortName, this.language, this.publicDomain,
+      {this.strong = false});
 
   String get asset => 'assets/bibles/$id.json';
 }
@@ -26,6 +32,18 @@ class BibleTranslations {
     TranslationInfo('ara', 'Almeida Revista e Atualizada', 'ARA', 'pt', false),
     TranslationInfo('naa', 'Nova Almeida Atualizada', 'NAA', 'pt', false),
     TranslationInfo('nvi', 'Nova Versão Internacional', 'NVI', 'pt', false),
+    // Traduções com números Strong. Veja tools/montar_strong.py.
+    TranslationInfo('kjvs', 'King James com Strong', 'KJV+S', 'en', true,
+        strong: true),
+    TranslationInfo('acfs', 'Almeida Corrigida Fiel com Strong', 'ACF+S', 'pt',
+        false,
+        strong: true),
+    TranslationInfo('aras', 'Almeida Revista e Atualizada com Strong', 'ARA+S',
+        'pt', false,
+        strong: true),
+    TranslationInfo(
+        'demos', 'Demonstração com Strong (João 1:1-5)', 'DEMO+S', 'pt', true,
+        strong: true),
     // Amostra pequena só para testar o app (João 1:1-5).
     TranslationInfo('demo', 'Demonstração (João 1:1-5)', 'DEMO', 'pt', true),
   ];

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../data/bible_catalog.dart';
 import '../data/bible_translations.dart';
 import 'local_store.dart';
+import 'strong_text.dart';
 import 'text_utils.dart';
 
 class SearchHit {
@@ -20,7 +21,8 @@ class SearchHit {
 /// `chapters` = lista de capítulos, cada capítulo = lista de versículos
 /// (strings). Também aceita `{"books": [...]}`.
 class LocalBible {
-  static final Map<String, List<List<List<String>>>> _cache = {};
+  static final Map<String, List<List<List<String>>>> _cache = {}; // sem marcações
+  static final Map<String, List<List<List<String>>>> _raw = {}; // com <H1121>
   static List<TranslationInfo>? _available;
 
   /// Traduções cujo arquivo existe em assets/bibles/.
@@ -58,7 +60,14 @@ class LocalBible {
       throw 'O arquivo ${info.asset} tem ${books.length} livros '
           '(esperado: ${BibleCatalog.books.length}).';
     }
-    return _cache[translationId] = books;
+    _raw[translationId] = books;
+    if (!StrongText.hasTags(raw)) return _cache[translationId] = books;
+    return _cache[translationId] = [
+      for (final b in books)
+        [
+          for (final c in b) [for (final v in c) StrongText.strip(v)]
+        ]
+    ];
   }
 
   /// Tradução escolhida pelo usuário (ou a primeira disponível).
@@ -75,6 +84,39 @@ class LocalBible {
     final list = await verses(translationId, bookId, chapter);
     if (verse < 1 || verse > list.length) return null;
     return list[verse - 1];
+  }
+
+  /// Versículos com as marcações Strong (`palavra<H1121>`), se houver.
+  static Future<List<String>> versesRaw(
+      String translationId, String bookId, int chapter) async {
+    await _load(translationId);
+    final books = _raw[translationId]!;
+    final i = BibleCatalog.indexOf(bookId);
+    if (i < 0 || chapter < 1 || chapter > books[i].length) return [];
+    return books[i][chapter - 1];
+  }
+
+  /// Versículos em que o número Strong [id] (ex.: "H430") aparece.
+  static Future<List<SearchHit>> findStrong(String translationId, String id,
+      {int limit = 300}) async {
+    final plain = await _load(translationId);
+    final raw = _raw[translationId]!;
+    final nid = StrongText.normalizeId(id);
+    if (nid == null) return [];
+    final re = RegExp('<${nid[0]}0*${nid.substring(1)}>');
+    final hits = <SearchHit>[];
+    for (var b = 0; b < raw.length; b++) {
+      for (var c = 0; c < raw[b].length; c++) {
+        for (var v = 0; v < raw[b][c].length; v++) {
+          if (re.hasMatch(raw[b][c][v])) {
+            hits.add(SearchHit(
+                BibleCatalog.books[b], c + 1, v + 1, plain[b][c][v]));
+            if (hits.length >= limit) return hits;
+          }
+        }
+      }
+    }
+    return hits;
   }
 
   /// Versículos do capítulo (lista vazia se a tradução não tem o capítulo).

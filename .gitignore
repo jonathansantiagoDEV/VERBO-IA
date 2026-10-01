@@ -9,6 +9,7 @@ android/local.properties
 # (a demo.json continua no repositório para o app abrir com algo)
 assets/bibles/*.json
 !assets/bibles/demo.json
+!assets/bibles/demos.json
 
 # Flutter / Dart
 .dart_tool/
