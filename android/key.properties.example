@@ -1,0 +1,4 @@
+storePassword=SUA_SENHA
+keyPassword=SUA_SENHA
+keyAlias=verbo
+storeFile=C:/Users/SEU_USUARIO/verbo-ia-release.jks
